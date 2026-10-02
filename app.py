@@ -4,6 +4,7 @@ import json
 import os
 
 from news_ui import render_news_section
+from ai_news import fetch_gnews, generate_with_openrouter
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -317,6 +318,164 @@ def main() -> None:
         OPENROUTER_MODEL,
         save_history,
     )
+
+    st.divider()
+    st.header("Trending Post + Connection Comment Assistant")
+
+    trend_tab, comment_tab = st.tabs(["Trending Topic Post", "Connection Comment"])
+
+    with trend_tab:
+        st.caption(
+            "Build a post from current news trends. This is news-based trend discovery, "
+            "not LinkedIn feed scraping."
+        )
+        trend_region = st.selectbox(
+            "Trend market",
+            ["India", "Global", "Technology", "Business"],
+            key="trend_region",
+        )
+
+        if st.button(
+            "Discover Trending Topics",
+            type="primary",
+            use_container_width=True,
+        ):
+            if not GNEWS_API_KEY:
+                st.error("Set GNEWS_API_KEY before discovering trends.")
+            elif not OPENROUTER_API_KEY:
+                st.error("Set OPENROUTER_API_KEY before generating the trend post.")
+            else:
+                queries = {
+                    "India": "India technology OR business OR AI OR stock market",
+                    "Global": "technology OR AI OR business OR markets",
+                    "Technology": "artificial intelligence OR software OR cloud OR cybersecurity",
+                    "Business": "business OR startups OR finance OR markets",
+                }
+                try:
+                    trend_articles = fetch_gnews(
+                        GNEWS_API_KEY,
+                        query=queries[trend_region],
+                        country="in" if trend_region == "India" else "us",
+                        language="en",
+                        limit=10,
+                    )
+                    if not trend_articles:
+                        st.warning("No trend articles were returned.")
+                    else:
+                        context = "\n\n".join(
+                            f"{i}. {a.get('title', '')} | "
+                            f"{a.get('source', {}).get('name', 'Unknown')} | "
+                            f"{a.get('publishedAt', '')} | "
+                            f"{a.get('description', '')} | "
+                            f"{a.get('url', '')}"
+                            for i, a in enumerate(trend_articles, start=1)
+                        )
+                        trend_prompt = (
+                            "Create one professional LinkedIn post based only on the supplied news. "
+                            "Identify the strongest current theme, explain 2-3 concrete developments, "
+                            "add one practical takeaway for professionals, avoid unsupported claims, "
+                            "and finish with 4-6 concise hashtags. Do not mention hidden reasoning."
+                        )
+                        trend_user = (
+                            f"Region/theme: {trend_region}\n\n"
+                            f"Current news:\n{context}"
+                        )
+                        trend_post = generate_with_openrouter(
+                            OPENROUTER_API_KEY,
+                            trend_prompt,
+                            trend_user,
+                            model=OPENROUTER_MODEL,
+                            use_reasoning=True,
+                        )
+                        st.session_state["generated_post"] = trend_post
+                        save_history(
+                            trend_post,
+                            f"trending:{trend_region}",
+                            "Trending Topic Post",
+                        )
+                except (requests.RequestException, ValueError) as exc:
+                    st.error(f"Trending post generation failed: {exc}")
+
+    with comment_tab:
+        st.caption(
+            "Paste the public text of a connection's LinkedIn post. "
+            "The app will draft a relevant comment for you to review and paste manually."
+        )
+        connection_post = st.text_area(
+            "Connection post text",
+            height=220,
+            placeholder="Paste the LinkedIn post text here...",
+            key="connection_post",
+        )
+        comment_goal = st.selectbox(
+            "Comment style",
+            [
+                "Thoughtful professional",
+                "Technical insight",
+                "Supportive",
+                "Question to start discussion",
+            ],
+            key="comment_goal",
+        )
+
+        if st.button(
+            "Generate Comment",
+            type="primary",
+            use_container_width=True,
+        ):
+            if not connection_post.strip():
+                st.warning("Paste the connection's post text first.")
+            elif not OPENROUTER_API_KEY:
+                st.error("Set OPENROUTER_API_KEY before generating a comment.")
+            else:
+                comment_system = (
+                    "Write authentic LinkedIn comments. Use only the supplied post content. "
+                    "Do not invent personal experience or facts. Keep the comment specific, "
+                    "natural, and useful. Do not copy the original post. Do not reveal hidden reasoning."
+                )
+                comment_user = (
+                    f"Comment goal: {comment_goal}\n\n"
+                    f"LinkedIn post:\n{connection_post.strip()}"
+                )
+                try:
+                    comment = generate_with_openrouter(
+                        OPENROUTER_API_KEY,
+                        comment_system,
+                        comment_user,
+                        model=OPENROUTER_MODEL,
+                        use_reasoning=True,
+                    )
+                    st.session_state["generated_comment"] = comment
+                    save_history(
+                        comment,
+                        "connection-post",
+                        "Connection Comment",
+                    )
+                except (requests.RequestException, ValueError) as exc:
+                    st.error(f"Comment generation failed: {exc}")
+
+        generated_comment = st.session_state.get("generated_comment", "")
+        if generated_comment:
+            st.subheader("Generated Comment")
+            edited_comment = st.text_area(
+                "Review and edit",
+                value=generated_comment,
+                height=180,
+                key="generated_comment_editor",
+            )
+            st.session_state["generated_comment"] = edited_comment
+            cc1, cc2 = st.columns(2)
+            if cc1.button("Copy Comment", use_container_width=True):
+                try:
+                    pyperclip.copy(edited_comment)
+                    st.success("Comment copied to clipboard.")
+                except pyperclip.PyperclipException:
+                    st.warning("Clipboard access is unavailable. Copy manually.")
+            cc2.link_button(
+                "Open LinkedIn",
+                "https://www.linkedin.com/feed/",
+                use_container_width=True,
+            )
 
     with st.expander("Recent commits"):
         if not commits:
