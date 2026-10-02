@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import os
 from typing import Any
 
@@ -67,15 +68,26 @@ def generate_with_openrouter(
     user_prompt: str,
     model: str = "openrouter/free",
     use_reasoning: bool = True,
+    image_bytes: bytes | None = None,
+    image_mime: str = "image/jpeg",
 ) -> str:
     if not api_key:
         raise ValueError("OPENROUTER_API_KEY is not configured.")
+
+    user_content: str | list[dict[str, Any]] = user_prompt
+    if image_bytes:
+        encoded_image = base64.b64encode(image_bytes).decode("ascii")
+        data_url = f"data:{image_mime};base64,{encoded_image}"
+        user_content = [
+            {"type": "text", "text": user_prompt},
+            {"type": "image_url", "image_url": {"url": data_url}},
+        ]
 
     body: dict[str, Any] = {
         "model": model or "openrouter/free",
         "messages": [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
+            {"role": "user", "content": user_content},
         ],
         "temperature": 0.4,
         "max_tokens": 900,
