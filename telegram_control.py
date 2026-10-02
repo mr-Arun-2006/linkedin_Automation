@@ -157,6 +157,7 @@ def help_text() -> str:
     return (
         "LinkedIn Automation Bot\n\n"
         "/status - check configuration\n"
+        "/id - show your Telegram user ID\n"
         "/trend india\n"
         "/trend global\n"
         "/trend technology\n"
