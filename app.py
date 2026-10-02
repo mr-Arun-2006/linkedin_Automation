@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 
-from ai_news import fetch_gnews, format_news_for_ai, generate_with_openrouter
+from news_ui import render_news_section
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -311,80 +311,13 @@ def main() -> None:
             "LinkedIn, and click Post yourself."
         )
 
-    st.divider()
-    st.header("AI Reasoning + Live News")
-
-    ai_col, news_col = st.columns(2)
-    with ai_col:
-        st.metric(
-            "Reasoning AI",
-            "Configured" if OPENROUTER_API_KEY else "API key missing",
-        )
-        st.caption(f"Model: {OPENROUTER_MODEL}")
-
-    with news_col:
-        st.metric(
-            "News API",
-            "Configured" if GNEWS_API_KEY else "API key missing",
-        )
-        st.caption("Provider: GNews")
-
-    news_query = st.text_input(
-        "News topic",
-        value="India stock market OR NSE OR BSE",
-        help="Enter a company, sector, ticker, or event.",
-    )
-    news_category = st.selectbox(
-        "News category",
-        ["business", "technology", "general", "world", "nation"],
-        index=0,
-        key="news_category",
+    render_news_section(
+        OPENROUTER_API_KEY,
+        GNEWS_API_KEY,
+        OPENROUTER_MODEL,
+        save_history,
     )
 
-    if st.button("Fetch Latest News", use_container_width=True):
-        if not GNEWS_API_KEY:
-            st.error("Set GNEWS_API_KEY before fetching news.")
-        else:
-            try:
-                st.session_state["news_articles"] = fetch_gnews(
-                    GNEWS_API_KEY,
-                    query=news_query,
-                    category=news_category,
-                    country="in",
-                    language="en",
-                    limit=10,
-                )
-            except (requests.RequestException, ValueError) as exc:
-                st.error((f"News request failed: {exc}")
-
-    news_articles = st.session_state.get("news_articles", [])
-    if news_articles:
-        st.subheader("News Feed")
-        for article in news_articles:
-            title = article.get("title", "Untitled")
-            source = article.get("source", {}).get("name", "Unknown")
-            published = article.get("publishedAt", "")
-            url = article.get("url", "")
-            st.markdown(f"**{title}*"*)
-            st.caption(f"{source} | {published}")
-            if url:
-                st.link_button("Read article", url)
-
-        if st.button("Analyze News with Reasoning AI", type="primary", use_container_width=True):
-            if not OPENROUTER_API_KEY:
-                st.error("Set OPENROUTER_API_KEY before running AI analysis.")
-            else:
-                news_context = format_news_for_ai(news_articles)
-                system_prompt = "You are a careful LinkedIn content analyst. Use only supplied news facts. Do not invent facts, quotes, prices, or events. Do not reveal private chain-of-thought or hidden reasoning. Mention uncertainty when the supplied data is incomplete."
-                user_prompt = f"Create a professional LinkedIn post about: (news_query). Summarize the most relevant 2-4 developments, explain why they matter to professionals, use only supplied facts, and end with a neutral takeaway and 4-6 hashtags.\n\nNews:\n{provided_news}"
-                try:
-                    ai_post = generate_with_openrouter(OPENROUTER_API_KEY, system_prompt, user_prompt, model=OPENROUTER_MODEL, use_reasoning=True)
-                    st.session_state["generated_post"] = ai_post
-                    save_history(ai_post, news_query, "News AI Analysis")
-                except (requests.RequestException, ValueError) as exc:
-                    st.error(
-                        f"AI request failed: exc}"
-                    )
     with st.expander("Recent commits"):
         if not commits:
             st.write("No commits found.")
