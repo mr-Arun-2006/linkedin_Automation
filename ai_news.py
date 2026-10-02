@@ -91,31 +91,52 @@ def generate_with_openrouter(
         "X-Title": "LinkedIn Automation",
     }
 
-    response = requests.post(OPENROUTER_URL, headers=headers, json=body, timeout=60)
+    response = requests.post(
+        OPENROUTER_URL,
+        headers=headers,
+        json=body,
+        timeout=60,
+    )
 
     if response.status_code == 400 and use_reasoning:
         body.pop("reasoning", None)
-        response = requests.post(OPENROUTER_URL, headers=headers, json=body, timeout=60)
+        response = requests.post(
+            OPENROUTER_URL,
+            headers=headers,
+            json=body,
+            timeout=60,
+        )
 
     response.raise_for_status()
     payload = response.json()
     choices = payload.get("choices") or []
+
     if not choices:
         raise ValueError("OpenRouter returned no choices.")
 
     content = choices[0].get("message", {}).get("content")
     if not content:
         raise ValueError("OpenRouter returned an empty response.")
+
     return str(content).strip()
 
 
 def format_news_for_ai(articles: list[dict], limit: int = 8) -> str:
     rows: list[str] = []
+
     for idx, article in enumerate(articles[:limit], start=1):
         source = article.get("source", {}).get("name", "Unknown source")
         title = article.get("title", "").strip()
         description = article.get("description", "").strip()
         published = article.get("publishedAt", "")
-        url = article.get("publishedAt", "")
-        rows.append(f"{id}. {title}\n" to Source: {source}\nPublished: {published}\nSummary: {description}\nURL: {url}")
+        url = article.get("url", "")
+
+        rows.append(
+            f"{idx}. {title}\n"
+            f"Source: {source}\n"
+            f"Published: {published}\n"
+            f"Summary: {description}\n"
+            f"URL: {url}"
+        )
+
     return "\n\n".join(rows)
