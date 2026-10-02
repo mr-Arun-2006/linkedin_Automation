@@ -118,10 +118,19 @@ def process_message(message: dict[str, Any]) -> None:
     user_id = from_user.get("id")
     chat_id = message.get("chat", {}).get("id")
 
-    if user_id is None or chat_id is None or not verify_admin(int(user_id)):
+    if user_id is None or chat_id is None:
         return
 
     text = (message.get("text") or message.get("caption") or "").strip()
+    if text.lower() in {"/id", "id"}:
+        send_text(
+            int(chat_id),
+            f"Your Telegram user ID is: {user_id}\nUse this numeric ID for TELEGRAM_ADMIN_USER_ID.",
+        )
+        return
+
+    if not verify_admin(int(user_id)):
+        return
     photo = message.get("photo") or []
 
     if not text:
