@@ -76,6 +76,67 @@ LinkedIn prohibits third-party software that automates actions such as posting, 
 
 This application does not store LinkedIn credentials. API keys are read from environment variables or Streamlit secrets and are not displayed in the UI.
 
+
+## Remote WhatsApp control
+
+The project can also be controlled remotely through the WhatsApp Business Platform. The official WhatsApp Cloud API supports programmatic sending/receiving and webhook-based events.
+
+The remote control service is whatsapp_server.py. It exposes:
+
+    /health
+    /webhook
+
+Only the WhatsApp number configured in WHATSAPP_ADMIN_PHONE is allowed to issue commands. Webhook requests are protected with the Meta X-Hub-Signature-256 application-secret signature.
+
+### Remote commands
+
+Send these commands from the authorized WhatsApp account:
+
+    HELP
+    STATUS
+    TREND India
+    TREND Global
+    TREND Technology
+    TREND Business
+    COMMENT <LinkedIn post text>
+    APPROVE <ID>
+    REJECT <ID>
+
+For a poster-based comment, send the poster/image as a WhatsApp image and put the LinkedIn post text in the image caption. The service downloads the media through the WhatsApp Cloud API and sends the post text + image to the AI comment generator.
+
+Generated posts/comments receive an approval ID. APPROVE <ID> records your approval, but the final LinkedIn action remains manual.
+
+### WhatsApp configuration
+
+Copy .env.example and configure:
+
+    WHATSAPP_ACCESS_TOKEN
+    WHATSAPP_PHONE_NUMBER_ID
+    WHATSAPP_APP_SECRET
+    WHATSAPP_VERIFY_TOKEN
+    WHATSAPP_ADMIN_PHONE
+    WHATSAPP_GRAPH_VERSION=v26.0
+
+The WhatsApp Cloud API requires a Meta business portfolio, WhatsApp Business Account, and business phone number. The app needs WhatsApp Business Platform messaging permissions and a public HTTPS webhook endpoint.
+
+### Remote deployment
+
+render.yaml contains a ready web-service definition for the WhatsApp control server:
+
+    uvicorn whatsapp_server:app --host 0.0.0.0 --port $PORT
+
+After deployment, configure the Meta webhook callback URL as your deployed HTTPS URL followed by /webhook.
+
+Use the same WHATSAPP_VERIFY_TOKEN in your Meta webhook configuration and application environment.
+
+For production, use persistent storage for WHATSAPP_STATE_DB so approval records survive restarts.
+
+### Important LinkedIn boundary
+
+WhatsApp can remotely manage the content workflow, but it must not be used to drive unauthorized LinkedIn automation. LinkedIn's current User Agreement prohibits bots or unauthorized automated methods for creating, commenting, liking, sharing, messaging, and other inauthentic engagement. LinkedIn also states that automated comments are not allowed.
+
+This project therefore uses WhatsApp for remote generation, review, status, and explicit approval, while the final LinkedIn interaction remains a human action.
+
 ## License
 
 GPL-3.0
