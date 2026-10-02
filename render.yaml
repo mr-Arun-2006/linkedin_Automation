@@ -1,10 +1,10 @@
 services:
   - type: web
-    name: linkedin-whatsapp-control
+    name: linkedin-telegram-control
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn whatsapp_server:app --host 0.0.0.0 --port $PORT
+    startCommand: uvicorn telegram_server:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     autoDeploy: true
     envVars:
@@ -14,17 +14,11 @@ services:
         value: openrouter/free
       - key: GNEWS_API_KEY
         sync: false
-      - key: WHATSAPP_ACCESS_TOKEN
+      - key: TELEGRAM_BOT_TOKEN
         sync: false
-      - key: WHATSAPP_PHONE_NUMBER_ID
+      - key: TELEGRAM_ADMIN_USER_ID
         sync: false
-      - key: WHATSAPP_APP_SECRET
+      - key: TELEGRAM_WEBHOOK_SECRET
         sync: false
-      - key: WHATSAPP_VERIFY_TOKEN
-        sync: false
-      - key: WHATSAPP_ADMIN_PHONE
-        sync: false
-      - key: WHATSAPP_GRAPH_VERSION
-        value: v26.0
-      - key: WHATSAPP_STATE_DB
-        value: data/whatsapp_state.db
+      - key: REMOTE_STATE_DB
+        value: data/remote_state.db
