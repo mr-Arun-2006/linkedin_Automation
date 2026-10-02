@@ -398,24 +398,44 @@ def main() -> None:
 
     with comment_tab:
         st.caption(
-            "Paste the public text of a connection's LinkedIn post. "
-            "The app will draft a relevant comment for you to review and paste manually."
+            "Builder-style LinkedIn comment: specific observation -> your professional/technical insight "
+            "-> practical building angle -> one genuine question. Review and paste manually."
         )
+
         connection_post = st.text_area(
             "Connection post text",
             height=220,
             placeholder="Paste the LinkedIn post text here...",
             key="connection_post",
         )
+
+        poster_context = st.text_area(
+            "Poster context (optional)",
+            height=120,
+            placeholder=(
+                "For a post with a poster/image, add the visible headline, key points, "
+                "or a short description. The AI will use only this supplied context."
+            ),
+            key="poster_context",
+        )
+
         comment_goal = st.selectbox(
-            "Comment style",
+            "Comment approach",
             [
-                "Thoughtful professional",
-                "Technical insight",
-                "Supportive",
-                "Question to start discussion",
+                "Builder Insight + Real Question",
+                "Technical Builder + Real Question",
+                "Professional Learning + Real Question",
+                "Supportive + Practical Question",
             ],
             key="comment_goal",
+        )
+
+        st.markdown(
+            "**Your comment structure:** "
+            "1) reference one specific point, "
+            "2) add a useful builder/engineering perspective, "
+            "3) connect it to implementation or real-world impact, "
+            "4) end with one answerable question."
         )
 
         if st.button(
@@ -429,13 +449,27 @@ def main() -> None:
                 st.error("Set OPENROUTER_API_KEY before generating a comment.")
             else:
                 comment_system = (
-                    "Write authentic LinkedIn comments. Use only the supplied post content. "
-                    "Do not invent personal experience or facts. Keep the comment specific, "
-                    "natural, and useful. Do not copy the original post. Do not reveal hidden reasoning."
+                    "Write a professional LinkedIn comment in the user's builder-oriented style. "
+                    "The goal is to sound like someone who is actively learning, building, testing, "
+                    "and thinking about real-world implementation. "
+                    "Use this exact structure: "
+                    "(1) mention one specific idea from the post, "
+                    "(2) add one original but evidence-grounded professional or technical observation, "
+                    "(3) add a practical builder angle such as implementation, trade-offs, adoption, "
+                    "reliability, scalability, or user impact, depending on the post, "
+                    "(4) end with ONE genuine, specific question that invites a useful answer. "
+                    "The question must not be generic and must connect directly to the post. "
+                    "Keep it natural, concise, and human: normally 3-5 sentences and about 50-90 words. "
+                    "Do not use empty praise such as 'Great post' or 'Amazing'. "
+                    "Do not repeat the post, invent personal experience, invent facts, or claim the user "
+                    "did something they did not provide. Do not use hashtags or emojis. "
+                    "When poster context is supplied, refer to a concrete detail from it, but never invent "
+                    "visual details that are not supplied. Do not reveal hidden reasoning."
                 )
                 comment_user = (
-                    f"Comment goal: {comment_goal}\n\n"
-                    f"LinkedIn post:\n{connection_post.strip()}"
+                    f"Comment approach: {comment_goal}\n\n"
+                    f"LinkedIn post:\n{connection_post.strip()}\n\n"
+                    f"Poster context:\n{poster_context.strip() or 'Not supplied'}"
                 )
                 try:
                     comment = generate_with_openrouter(
@@ -445,9 +479,9 @@ def main() -> None:
                         model=OPENROUTER_MODEL,
                         use_reasoning=True,
                     )
-                    st.session_state["generated_comment"] = comment
+                    st.session_state["generated_comment"] = comment.strip()
                     save_history(
-                        comment,
+                        comment.strip(),
                         "connection-post",
                         "Connection Comment",
                     )
