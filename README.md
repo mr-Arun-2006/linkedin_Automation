@@ -77,65 +77,82 @@ LinkedIn prohibits third-party software that automates actions such as posting, 
 This application does not store LinkedIn credentials. API keys are read from environment variables or Streamlit secrets and are not displayed in the UI.
 
 
-## Remote WhatsApp control
+## Remote Telegram control
 
-The project can also be controlled remotely through the WhatsApp Business Platform. The official WhatsApp Cloud API supports programmatic sending/receiving and webhook-based events.
+The project can be controlled remotely through a Telegram Bot. Telegram bots use the Bot API and can receive updates through webhooks or long polling. For this project, the cloud deployment uses a webhook. citeturn545338search2turn536513search0
 
-The remote control service is whatsapp_server.py. It exposes:
-
-    /health
-    /webhook
-
-Only the WhatsApp number configured in WHATSAPP_ADMIN_PHONE is allowed to issue commands. Webhook requests are protected with the Meta X-Hub-Signature-256 application-secret signature.
+The remote control service is telegram_server.py.
 
 ### Remote commands
 
-Send these commands from the authorized WhatsApp account:
+Send these commands from the authorized Telegram account:
 
-    HELP
-    STATUS
-    TREND India
-    TREND Global
-    TREND Technology
-    TREND Business
-    COMMENT <LinkedIn post text>
-    APPROVE <ID>
-    REJECT <ID>
+    /help
+    /status
+    /trend india
+    /trend global
+    /trend technology
+    /trend business
+    /comment <LinkedIn post text>
+    /approve <ID>
+    /reject <ID>
 
-For a poster-based comment, send the poster/image as a WhatsApp image and put the LinkedIn post text in the image caption. The service downloads the media through the WhatsApp Cloud API and sends the post text + image to the AI comment generator.
+For a poster-based comment, send the LinkedIn poster/image with a caption beginning with:
 
-Generated posts/comments receive an approval ID. APPROVE <ID> records your approval, but the final LinkedIn action remains manual.
+    /comment <LinkedIn post text>
 
-### WhatsApp configuration
+The bot reads the poster image plus the caption and generates a builder-style comment with a specific observation, professional insight, practical building angle, and one real question.
+
+Generated drafts receive an approval ID and also include Approve/Reject buttons.
+
+### Security
+
+Only the Telegram numeric user ID configured in TELEGRAM_ADMIN_USER_ID can control the bot.
+
+Telegram webhook requests are also checked against TELEGRAM_WEBHOOK_SECRET using the X-Telegram-Bot-Api-Secret-Token header supported by Telegram's setWebhook API. citeturn536513search0
+
+Never commit TELEGRAM_BOT_TOKEN or any other secret to GitHub.
+
+### Configuration
 
 Copy .env.example and configure:
 
-    WHATSAPP_ACCESS_TOKEN
-    WHATSAPP_PHONE_NUMBER_ID
-    WHATSAPP_APP_SECRET
-    WHATSAPP_VERIFY_TOKEN
-    WHATSAPP_ADMIN_PHONE
-    WHATSAPP_GRAPH_VERSION=v26.0
+    TELEGRAM_BOT_TOKEN
+    TELEGRAM_ADMIN_USER_ID
+    TELEGRAM_WEBHOOK_SECRET
 
-The WhatsApp Cloud API requires a Meta business portfolio, WhatsApp Business Account, and business phone number. The app needs WhatsApp Business Platform messaging permissions and a public HTTPS webhook endpoint.
+Create the bot with @BotFather and store the generated token securely. Telegram notes that anyone with the bot token can control the bot, so it must be treated as a secret. citeturn536513search9
 
 ### Remote deployment
 
-render.yaml contains a ready web-service definition for the WhatsApp control server:
+render.yaml contains a web-service definition for:
 
-    uvicorn whatsapp_server:app --host 0.0.0.0 --port $PORT
+    uvicorn telegram_server:app --host 0.0.0.0 --port $PORT
 
-After deployment, configure the Meta webhook callback URL as your deployed HTTPS URL followed by /webhook.
+After deployment, set the Telegram webhook to your public HTTPS endpoint:
 
-Use the same WHATSAPP_VERIFY_TOKEN in your Meta webhook configuration and application environment.
+    https://<your-render-service>/webhook
 
-For production, use persistent storage for WHATSAPP_STATE_DB so approval records survive restarts.
+Telegram webhooks require HTTPS and the service must be publicly reachable. citeturn545338search1turn536513search0
 
-### Important LinkedIn boundary
+### Remote workflow
 
-WhatsApp can remotely manage the content workflow, but it must not be used to drive unauthorized LinkedIn automation. LinkedIn's current User Agreement prohibits bots or unauthorized automated methods for creating, commenting, liking, sharing, messaging, and other inauthentic engagement. LinkedIn also states that automated comments are not allowed.
+    Telegram command/image
+            |
+            v
+    Secure webhook
+            |
+            +--> GNews --> current-news trend post
+            |
+            +--> OpenRouter --> AI generation
+            |
+            v
+    Approval ID + Approve/Reject
+            |
+            v
+    Manual LinkedIn action
 
-This project therefore uses WhatsApp for remote generation, review, status, and explicit approval, while the final LinkedIn interaction remains a human action.
+Telegram manages the remote content workflow. It does not automate LinkedIn posting or commenting.
 
 ## License
 
