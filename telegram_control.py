@@ -54,19 +54,28 @@ def create_approval(kind: str, content: str) -> str:
 def resolve_approval(approval_id: str, status: str) -> sqlite3.Row | None:
     if not re.fullmatch(r"[A-F0-9]{8}", approval_id.upper()):
         return None
+    if status not in {"approved", "rejected"}:
+        return None
 
+    normalized_id = approval_id.upper()
     with _connection() as conn:
         row = conn.execute(
             "SELECT * FROM approvals WHERE id = ? AND status = 'pending'",
-            (approval_id.upper(),),
+            (normalized_id,),
         ).fetchone()
-        if row:
-            conn.execute(
-                "UPDATE approvals SET status = ? WHERE id = ?",
-                (status, approval_id.upper()),
-            )
-            conn.commit()
-        return row
+        if not row:
+            return None
+
+        conn.execute(
+            "UPDATE approvals SET status = ? WHERE id = ?",
+            (status, normalized_id),
+        )
+        conn.commit()
+
+        return conn.execute(
+            "SELECT * FROM approvals WHERE id = ?",
+            (normalized_id,),
+        ).fetchone()
 
 
 def verify_admin(user_id: int) -> bool:
