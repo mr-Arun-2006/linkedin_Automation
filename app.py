@@ -189,13 +189,12 @@ def save_history(post: str, repo: str, post_type: str) -> None:
 
 def main() -> None:
     st.title("LinkedIn Content Automation")
-    st.caption
-(
+    st.caption(
         "GitHub project -> professional LinkedIn draft. "
         "No LinkedIn API key required."
     )
 
-    with st.sidebarH
+    with st.sidebar:
         st.header("Project")
         repo_input = st.text_input(
             "GitHub repository",
