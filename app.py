@@ -398,8 +398,8 @@ def main() -> None:
 
     with comment_tab:
         st.caption(
-            "Builder-style LinkedIn comment: specific observation -> your professional/technical insight "
-            "-> practical building angle -> one genuine question. Review and paste manually."
+            "Builder-style LinkedIn comment: specific observation -> professional insight "
+            "-> practical building angle -> one genuine question."
         )
 
         connection_post = st.text_area(
@@ -409,12 +409,29 @@ def main() -> None:
             key="connection_post",
         )
 
+        poster_image = st.file_uploader(
+            "LinkedIn poster / image (optional)",
+            type=["png", "jpg", "jpeg", "webp"],
+            help=(
+                "Upload the post's poster or image. The free OpenRouter router can route "
+                "image input to a compatible vision model."
+            ),
+            key="poster_image",
+        )
+
+        if poster_image:
+            st.image(
+                poster_image,
+                caption="Poster used for comment context",
+                use_container_width=True,
+            )
+
         poster_context = st.text_area(
             "Poster context (optional)",
-            height=120,
+            height=100,
             placeholder=(
-                "For a post with a poster/image, add the visible headline, key points, "
-                "or a short description. The AI will use only this supplied context."
+                "Add any detail that may not be readable from the image, such as a "
+                "specific project name, metric, event title, or implementation detail."
             ),
             key="poster_context",
         )
@@ -425,52 +442,70 @@ def main() -> None:
                 "Builder Insight + Real Question",
                 "Technical Builder + Real Question",
                 "Professional Learning + Real Question",
-                "Supportive + Practical Question",
+                "Practical Impact + Real Question",
             ],
             key="comment_goal",
         )
 
+        question_focus = st.selectbox(
+            "Question focus",
+            [
+                "Implementation",
+                "Technology choice",
+                "Real-world impact",
+                "Scalability / reliability",
+                "Learning / next step",
+            ],
+            key="question_focus",
+        )
+
         st.markdown(
-            "**Your comment structure:** "
-            "1) reference one specific point, "
-            "2) add a useful builder/engineering perspective, "
-            "3) connect it to implementation or real-world impact, "
-            "4) end with one answerable question."
+            "**Comment formula:** specific point + your builder insight + practical implication + "
+            "one real question."
         )
 
         if st.button(
-            "Generate Comment",
+            "Generate Comment from Post + Poster",
             type="primary",
             use_container_width=True,
         ):
-            if not connection_post.strip():
-                st.warning("Paste the connection's post text first.")
+            if not connection_post.strip() and not poster_image:
+                st.warning("Add the connection's post text or upload its poster/image.")
             elif not OPENROUTER_API_KEY:
                 st.error("Set OPENROUTER_API_KEY before generating a comment.")
             else:
+                image_bytes = poster_image.getvalue() if poster_image else None
+                image_mime = poster_image.type if poster_image else "image/jpeg"
+
                 comment_system = (
-                    "Write a professional LinkedIn comment in the user's builder-oriented style. "
-                    "The goal is to sound like someone who is actively learning, building, testing, "
-                    "and thinking about real-world implementation. "
-                    "Use this exact structure: "
-                    "(1) mention one specific idea from the post, "
-                    "(2) add one original but evidence-grounded professional or technical observation, "
-                    "(3) add a practical builder angle such as implementation, trade-offs, adoption, "
-                    "reliability, scalability, or user impact, depending on the post, "
-                    "(4) end with ONE genuine, specific question that invites a useful answer. "
-                    "The question must not be generic and must connect directly to the post. "
-                    "Keep it natural, concise, and human: normally 3-5 sentences and about 50-90 words. "
-                    "Do not use empty praise such as 'Great post' or 'Amazing'. "
-                    "Do not repeat the post, invent personal experience, invent facts, or claim the user "
-                    "did something they did not provide. Do not use hashtags or emojis. "
-                    "When poster context is supplied, refer to a concrete detail from it, but never invent "
-                    "visual details that are not supplied. Do not reveal hidden reasoning."
+                    "Write a professional LinkedIn comment in a practical builder style. "
+                    "The author should sound like someone who actively builds, tests, learns, "
+                    "and thinks about real-world implementation. "
+                    "Use the supplied LinkedIn post text, poster image, and optional context as evidence. "
+                    "Follow this structure exactly: "
+                    "1) reference one concrete point visible in the post or poster; "
+                    "2) add one original professional/technical observation; "
+                    "3) connect that observation to building, implementation, trade-offs, "
+                    "reliability, scalability, adoption, or user impact; "
+                    "4) end with ONE specific, answerable question focused on the requested question area. "
+                    "The question must make sense for the actual post and should encourage the author to "
+                    "share a real decision, lesson, trade-off, result, or next step. "
+                    "Do not ask generic questions such as 'What do you think?' or 'How did you do this?'. "
+                    "Do not begin with empty praise such as 'Great post', 'Amazing', or 'Well said'. "
+                    "Do not copy the original post. Do not invent facts, personal experience, metrics, "
+                    "project details, or visual details. When the poster contains text, use it as context. "
+                    "When the image is unclear, rely on the supplied post text/context instead of guessing. "
+                    "Keep it natural and concise: normally 3-5 sentences and about 50-90 words. "
+                    "No hashtags. No emojis. No hidden reasoning."
                 )
+
                 comment_user = (
-                    f"Comment approach: {comment_goal}\n\n"
-                    f"LinkedIn post:\n{connection_post.strip()}\n\n"
-                    f"Poster context:\n{poster_context.strip() or 'Not supplied'}"
+                    f"Comment approach: {comment_goal}\n"
+                    f"Question focus: {question_focus}\n\n"
+                    f"LinkedIn post:\n{connection_post.strip() or 'Not supplied'}\n\n"
+                    f"Additional poster context:\n{poster_context.strip() or 'Not supplied'}"
                 )
+
                 try:
                     comment = generate_with_openrouter(
                         OPENROUTER_API_KEY,
@@ -478,6 +513,8 @@ def main() -> None:
                         comment_user,
                         model=OPENROUTER_MODEL,
                         use_reasoning=True,
+                        image_bytes=image_bytes,
+                        image_mime=image_mime,
                     )
                     st.session_state["generated_comment"] = comment.strip()
                     save_history(
