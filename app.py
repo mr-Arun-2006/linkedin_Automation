@@ -13,7 +13,11 @@ GITHUB_API = "https://api.github.com"
 HISTORY_DIR = Path("data/history")
 HISTORY_FILE = HISTORY_DIR / "posts.json"
 
-st.set_page_config(page_title="LinkedIn Content Automation", page_icon="LI", layout="wide")
+st.set_page_config(
+    page_title="LinkedIn Content Automation",
+    page_icon="LI",
+    layout="wide",
+)
 
 
 def github_request(path: str) -> dict | list:
@@ -63,6 +67,7 @@ def clean_markdown(text: str) -> str:
 
 def infer_topics(repo: dict, readme: str) -> list[str]:
     text = f"{repo.get('name', '')} {repo.get('description', '')} {readme}".lower()
+
     mapping = {
         "python": "Python",
         "sql": "SQL",
@@ -79,10 +84,20 @@ def infer_topics(repo: dict, readme: str) -> list[str]:
         "redis": "Redis",
         "ai": "AI",
     }
-    return [label for needle, label in mapping.items() if needle in text][:6]
+    return [
+        label
+        for needle, label in mapping.items()
+        if needle in text
+    ][:6]
 
 
-def build_post(repo: dict, readme: str, commits: list[dict], post_type: str, tone: str) -> str:
+def build_post(
+    repo: dict,
+    readme: str,
+    commits: list[dict],
+    post_type: str,
+    tone: str,
+) -> str:
     name = repo.get("name", "GitHub project")
     description = repo.get("description") or "A project I am building and improving."
     url = repo.get("html_url", "")
@@ -91,10 +106,20 @@ def build_post(repo: dict, readme: str, commits: list[dict], post_type: str, ton
 
     recent_commit = ""
     if commits:
-        recent_commit = commits[0].get("commit", {}).get("message", "").splitlines()[0]
+        recent_commit = (
+            commits[0]
+            .get("commit", {})
+            .get("message", "")
+            .splitlines()[0]
+        )
 
-    hashtags = ["GitHub", "BuildInPublic", "SoftwareDevelopment", "DataEngineering"]
-    hashtags.extend(x.replace(" ", "") for x in topics)
+    hashtags = [
+        "GitHub",
+        "BuildInPublic",
+        "SoftwareDevelopment",
+        "DataEngineering",
+    ]
+    hashtags.extend(topic.replace(" ", "") for topic in topics)
     hashtags = list(dict.fromkeys(hashtags))[:8]
     tags = " ".join(f"#{tag}" for tag in hashtags)
 
@@ -136,8 +161,10 @@ def build_post(repo: dict, readme: str, commits: list[dict], post_type: str, ton
 def load_history() -> list[dict]:
     if not HISTORY_FILE.exists():
         return []
+
     try:
-        return json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
+        data = json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
+        return data if isinstance(data, list) else []
     except (json.JSONDecodeError, OSError):
         return []
 
@@ -162,9 +189,13 @@ def save_history(post: str, repo: str, post_type: str) -> None:
 
 def main() -> None:
     st.title("LinkedIn Content Automation")
-    st.caption("GitHub project -> professional LinkedIn draft. No LinkedIn API key required.")
+    st.caption
+(
+        "GitHub project -> professional LinkedIn draft. "
+        "No LinkedIn API key required."
+    )
 
-    with st.sidebar:
+    with st.sidebarH
         st.header("Project")
         repo_input = st.text_input(
             "GitHub repository",
@@ -173,16 +204,27 @@ def main() -> None:
         )
         post_type = st.selectbox(
             "Post type",
-            ["Project Launch", "Progress Update", "Technical", "Learning"],
+            [
+                "Project Launch",
+                "Progress Update",
+                "Technical",
+                "Learning",
+            ],
         )
-        tone = st.selectbox("Tone", ["Professional", "Technical"])
-
-    if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo_input.strip()):
-        st.error("Enter the repository as owner/name.")
-        return
-
+        tone = st.selectbox(
+            "Tone",
+            ["Professional", "Technical"],
+        )
+ 
     repo_name = repo_input.strip()
 
+    if not re.fullmatch(
+        r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+",
+        repo_name,
+    ):
+        st.error("Enter the repository as owner/name.")
+        return
+ 
     try:
         repo = get_repository(repo_name)
         readme = get_readme(repo_name)
@@ -199,50 +241,82 @@ def main() -> None:
     st.subheader(repo.get("name", "Repository"))
     st.write(repo.get("description") or "No GitHub description is set.")
 
-    if st.button("Generate LinkedIn Post", type="primary", use_container_width=True):
-        post = build_post(repo, readme, commits, post_type, tone)
+    if st.button(
+        "Generate LinkedIn Post",
+        type="primary",
+        use_container_width=True,
+    ):
+        post = build_post(
+            repo,
+            readme,
+            commits,
+            post_type,
+            tone,
+        )
         st.session_state["generated_post"] = post
         save_history(post, repo_name, post_type)
 
     post = st.session_state.get("generated_post", "")
+
     if post:
         st.subheader("Generated Post")
-        edited = st.text_area("Review and edit before publishing", value=post, height=350)
+        edited = st.text_area(
+            "Review and edit before publishing",
+            value=post,
+            height=350,
+        )
         st.session_state["generated_post"] = edited
 
-        c1, c2 = st.columns(2)
-        if c1.button("Copy to Clipboard", use_container_width=True):
+        col_a, col_b = st.columns(2)
+
+        if col_a.button(
+            "Copy to Clipboard",
+            use_container_width=True,
+        ):
             try:
                 pyperclip.copy(edited)
                 st.success("Copied to clipboard.")
             except pyperclip.PyperclipException:
-                st.warning("Clipboard access is unavailable. Copy the text manually.")
+                st.warning(
+                    "Clipboard access is unavailable. Copy the text manually."
+                )
 
-        c2.link_button(
+        col_b.link_button(
             "Open LinkedIn",
             "https://www.linkedin.com/feed/?shareActive=true",
             use_container_width=True,
         )
 
         st.info(
-            "Publishing remains manual: review the draft, paste it into LinkedIn, "
-            "and click Post yourself."
+            "Publishing remains manual: review the draft, paste it into "
+            "LinkedIn, and click Post yourself."
         )
 
     with st.expander("Recent commits"):
         if not commits:
             st.write("No commits found.")
+
         for commit in commits:
-            message = commit.get("commit", {}).get("message", "").splitlines()[0]
+            message = (
+                commit.get("commit", {})
+                .get("message", "")
+                .splitlines()[0]
+            )
             sha = commit.get("sha", "")[:7]
             st.write(f"{sha} - {message}")
 
     with st.expander("Post history"):
-        phistory = load_history()
-        if not phistory:
+        history = load_history()
+
+        if not history:
             st.write("No generated posts yet.")
+
         for item in history[:10]:
-            st.caption(f"{item['created_at']} | {tem[|repository]} | {item['type']}")
+            st.caption(
+                f"{item['created_at']} | "
+                f"{item['repository']} | "
+                f"{item['type']}"
+            )
             st.code(item["content"])
 
 
