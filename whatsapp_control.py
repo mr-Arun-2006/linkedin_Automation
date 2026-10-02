@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import os
+import re
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -70,9 +71,13 @@ def verify_admin(sender: str) -> bool:
     allowed = os.getenv("WHATSAPP_ADMIN_PHONE", "").strip()
     if not allowed:
         return False
-    normalized_sender = sender.replace("whatsapp:", "").replace(" ", "")
-    normalized_allowed = allowed.replace("whatsapp:", "").replace(" ", "")
-    return hmac.compare_digest(normalized_sender, normalized_allowed)
+
+    normalized_sender = re.sub(r"\D", "", sender)
+    normalized_allowed = re.sub(r"\D", "", allowed)
+    return bool(normalized_sender) and hmac.compare_digest(
+        normalized_sender,
+        normalized_allowed,
+    )
 
 
 def build_trend_post(api_key: str, gnews_key: str, model: str, region: str) -> str:
