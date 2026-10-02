@@ -20,5 +20,7 @@ services:
         sync: false
       - key: TELEGRAM_WEBHOOK_SECRET
         sync: false
+      - key: TELEGRAM_WEBHOOK_URL
+        sync: false
       - key: REMOTE_STATE_DB
         value: data/remote_state.db
